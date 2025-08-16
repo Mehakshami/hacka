@@ -1,38 +1,29 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const user = require('../models/user');
-const router = express.Router();
+// backend/routes/auth.js
+const express = require('express')
+const jwt = require('jsonwebtoken')
+const User = require('../models/user')
+const router = express.Router()
 
-// Signup
-router.post('/signup', async (req, res) => {
+// Register
+router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { firstname, lastname, email, phonenumber, student } = req.body
 
-    const newUser = new User({ username, email, password: hashedPassword });
-    await newUser.save();
-    res.status(201).json({ message: 'User created', user: newUser });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    // 🔍 Check if email already exists
+    const existingUser = await User.findOne({ email })
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already in use' })
+    }
+
+    // ✅ Create new user
+    const user = new User({ firstname, lastname, email, phonenumber, student })
+    await user.save()
+
+    res.status(201).json({ message: 'User registered' })
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
-});
+})
 
-// Login
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'User not found' });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid password' });
-
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.json({ message: 'Logged in', token, user });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-module.exports = router;
+module.exports = router
